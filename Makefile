@@ -16,7 +16,7 @@ ifeq ($(PROF), true)
 endif
 
 BIN = lc3as
-SRC = main.c
+SRC = main.c lc3as.c
 OBJ = $(SRC:.c=.o)
 
 all:$(BIN)
