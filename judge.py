@@ -9,6 +9,7 @@ import subprocess
 
 def judge(test_dir):
     for f in glob.glob(os.path.join(test_dir, '*.asm')):
+        print('Verifying {} ...'.format(f))
         std_assmbler = os.path.join(test_dir, 'lc3as-std')
 
         sym = f.replace('.asm', '.sym')
@@ -24,13 +25,16 @@ def judge(test_dir):
         subprocess.call([os.path.join(os.curdir, 'lc3as'), f], stdout=subprocess.DEVNULL)
 
         if not filecmp.cmp(sym, std_sym):
+            print('Failed!')
             print('{} and {} differs!'.format(sym, std_sym))
             return 1
 
         if not filecmp.cmp(obj, std_obj):
+            print('Failed!')
             print('{} and {} differs!'.format(obj, std_obj))
             return 1
 
+        print('Pass!')
         for i in (sym, std_sym, obj, std_obj):
             os.remove(i)
     else:
