@@ -24,14 +24,12 @@ int main(int argc, char *argv[]){
     FILE *sym_file = NULL;
     FILE *obj_file = NULL;
     char filepath[BUFSIZ];
-    size_t len;
     char *ext;
 
-    len = strlen(argv[1]);
     strncpy(filepath, argv[1], BUFSIZ);
 
     if ((ext = strrchr (filepath, '.')) == NULL) {
-        ext = filepath + len;
+        ext = filepath + strlen(argv[1]);
     }
 
     asm_file = fopen(filepath, "r");
