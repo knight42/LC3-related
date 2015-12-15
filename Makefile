@@ -5,7 +5,7 @@ DEBUG = false
 OLEVEL = 2
 GCC = gcc
 
-CFLAG = 
+CFLAG =
 ifeq ($(DEBUG), true)
 	CFLAG += -O0 -g
 else
