@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 
 #define NUM_OPS 29
@@ -42,7 +43,6 @@
 
 #define LABEL_MLEN 30
 
-
 static const char* const opnames[NUM_OPS] = {
     /* no opcode seen (yet) */
     "missing opcode",
@@ -62,13 +62,13 @@ static const char* const opnames[NUM_OPS] = {
 };
 
 typedef struct Label {
-    char name[21];
+    char name[LABEL_MLEN + 1];
     int16_t location;
     struct Label *next;
 } label_t;
 
 typedef struct label_list {
-    int length;
+    int16_t init_loc;
     label_t *first;
 } label_list_t;
 
@@ -76,18 +76,24 @@ label_t* new_label(const char *name, int16_t loc) ;
 label_list_t* new_label_list(void) ;
 int insert_label(FILE *sym, label_list_t *list, const char *name, int16_t loc) ;
 
+// opcode name -> index in $opnames
 int lc3as_locate(const char *s) ;
 
 int16_t label2loc(label_list_t *list, const char *name) ;
 
-bool lc3as_label_valid(const char *s) ;
-
 int16_t parse_int16(const char *s) ;
+int32_t parse_int32(const char *s) ;
 
 bool is_valid_reg(const char *s) ;
+bool is_valid_label(const char *s) ;
+bool is_valid_strz(const char *s) ;
 
-int  parse_strz(const char *s) ;
-
+// strip the space chars on both sides and remove the comment
 char* strtrim(char *s) ;
 
-void dump_ir(FILE *obj, int16_t ir) ;
+void dump_ir(FILE *obj, uint16_t ir) ;
+
+label_list_t* gen_symbols(FILE *in, FILE *sym_file);
+void gen_obj(label_list_t *table, FILE *obj_file);
+
+int16_t get_offset(label_list_t *table, int prog_loc, int lineno, const char *s, char width);
