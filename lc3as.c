@@ -133,18 +133,46 @@ bool is_valid_strz(const char *s)
 char* strtrim(char *s)
 {
     if(!*s || !s) return s;
-
-    char *p;
+    char *p, *q;
     s += strspn(s, " \f\n\r\t\v");
     if(*s == ';') {
         *s = 0; return s;
     }
-    p = strchr(s, ';');
-    if (!p && !(p = strchr(s, '\n'))) {
-        p = strchr(s, '\0');
+
+    p = strchr(s, '"');
+    q = strchr(s, ';');
+/*
+ *    if(! p) {
+ *        if(! q) q = s + strlen(s);
+ *
+ *        while(isspace(*--q));
+ *        *(1 + q) = 0;
+ *    }
+ *    else if(q) {
+ *        if(q < p) {
+ *            while(isspace(*--q));
+ *            *(1 + q) = 0;
+ *        }
+ *        else if((p = strchr(p + 1, '"'))){
+ *            *(1 + p) = 0;
+ *        }
+ *    }
+ *    else {
+ *        q = s + strlen(s);
+ *        while(isspace(*--q));
+ *        *(1 + q) = 0;
+ *    }
+ */
+
+    if(! q) {
+        q = s + strlen(s);
     }
-    while(isspace(*--p));
-    *(p + 1) = 0;
+    else if(p && q > p && (p = strchr(p + 1, '"'))) {
+        *(1 + p) = 0;
+        return s;
+    }
+    while(isspace(*--q));
+    *(1 + q) = 0;
     return s;
 }
 
@@ -176,7 +204,7 @@ int16_t get_offset(label_list_t *table, int prog_loc, int lineno, const char *s,
             return offset;
     }
     static char fmt[100];
-    sprintf(fmt, "line: %%d: Out of range: x%%0%dhX\n", width);
+    sprintf(fmt, "line: %%d: Offset out of range: x%%0%dhX\n", width + 1);
 
     offset = label2loc(table, s);
     if(offset != -1) {
@@ -186,7 +214,8 @@ int16_t get_offset(label_list_t *table, int prog_loc, int lineno, const char *s,
         diehere("Cannot find label: %s\n", lineno, s);
         exit(1);
     }
-    else if(offset > max || offset < min){
+
+    if(offset > max || offset < min){
         fprintf(stderr, fmt, lineno, offset);
         exit(1);
     }
@@ -213,7 +242,7 @@ label_list_t* gen_symbols(FILE *in, FILE *sym_file)
 
     stripped = fopen(_tmpfile, "w+");
     label_list_t *table = new_label_list();
-    while(!saw_end && fgets(buf, BUFSIZ, in)) {
+    for(; !saw_end && fgets(buf, BUFSIZ, in); ++lineno) {
         beg = strtrim(buf);
 
         if(! *beg) {
@@ -305,8 +334,6 @@ label_list_t* gen_symbols(FILE *in, FILE *sym_file)
             fprintf(stripped, "%s\n", beg);
             ++prog_loc;
         }
-
-        ++lineno;
     }
 
     if(!saw_orig) {
