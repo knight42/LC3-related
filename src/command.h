@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 #include <stdbool.h>
+#include <signal.h>
 #include "common.h"
 #include "label.h"
 #include "rl.h"

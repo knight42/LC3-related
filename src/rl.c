@@ -50,7 +50,7 @@ static FILE *script_stack[SCRIPT_STACK_SIZE] = {0};
 static FILE *script_file = NULL;
 static char input_buf[BUFSIZ];
 
-int set_script_path(const char *path)
+int add_script(const char *path)
 {
     // 0: Success
     // 1: Stack full
@@ -66,6 +66,7 @@ int set_script_path(const char *path)
     FILE *p = fopen(path, "r");
 
     if(! p) {
+        fprintf(stderr, "No such file: %s\n", path);
         return 2;
     }
     else if(script_file) {

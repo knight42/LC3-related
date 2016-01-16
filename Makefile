@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 PROF = false
-DEBUG = true
+DEBUG = false
 OLEVEL = 2
 GCC = gcc
 
@@ -18,8 +18,8 @@ endif
 BIN = simulator
 SRC = main.c command.c rl.c label.c
 OBJ = $(SRC:.c=.o)
-BUILD_DIR = ../build
-SRC_DIR = ./
+BUILD_DIR = build
+SRC_DIR = src
 BUILD = $(foreach n,$(OBJ),$(BUILD_DIR)/$(n))
 
 all: $(BUILD_DIR) $(BIN)

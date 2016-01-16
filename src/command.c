@@ -30,14 +30,12 @@ static const char *sim_commands[] = {
 
 static char combuf[BUFSIZ];
 static int subroutine_level, interrupt_level;
-static bool halted = false, stopped = false, quit = false;
+static bool halted = false, stopped = false, quit = false, loop = false;
 
 static lc3_uint RAM[UINT16_MAX], bps_count = 0;
-// breakpoints
-static char lc3_bps[UINT16_MAX];
+static char lc3_bps[UINT16_MAX];   // breakpoints
 static lc3_uint reg_file[8];
 static lc3_uint PC, PSR;
-//static lc3_uint *KBDR, *KBSR, *DDR, *DSR;
 
 static label_list_t *label_list = NULL;
 static char last_open_file[BUFSIZ] = {0};
@@ -90,8 +88,6 @@ static const char* strsplit(const char *s);
 
 
 // ==================== Bit Hacks Begin =================
-// http://stackoverflow.com/a/263738/4725840
-// His naming is better than mine
 
 /* a=target variable, b=bit number to act upon 0-n */
 #define BIT_SET(a, b) ((a) | (1u << (b)))
@@ -133,12 +129,32 @@ static const char* strsplit(const char *s);
 #define RAM_get(loc) (RAM[(loc) & 0xFFFF])
 #define RAM_set(loc, val) (RAM_get(loc) = (val))
 
+static void handler(int signum)
+{
+    if(loop) {
+        puts("\n\n==== LC3 stopped. ====\n");
+        stopped = true;
+    }
+}
 
 void lc3_run (void)
 {
+   struct sigaction sa;
+
+   sa.sa_handler = handler;
+   sigemptyset(&sa.sa_mask);
+   sa.sa_flags = SA_RESTART;
+
+   if (sigaction(SIGINT, &sa, NULL) == -1)
+   {
+       fputs("Failed to setup signal handler.", stderr);
+   }
+
     char *cmd = NULL;
     int last_code = -1, code;
     while(! quit) {
+        stopped = false;
+
         cmd = auto_gets();
 
         if (! cmd) break;
@@ -150,6 +166,8 @@ void lc3_run (void)
         else {
             code = last_code;
         }
+
+        if(code == -1) continue;
 
         switch (code) {
             case 0 ... 15:
@@ -165,13 +183,13 @@ void lc3_run (void)
 
 void lc3_init_machine(const char *path)
 {
-    quit = halted = stopped= false;
+    loop = quit = halted = stopped = false;
 
     subroutine_level = 0;
     interrupt_level = 0;
 
     PC = 0;
-    PSR = 0x4000;
+    PSR = 0x4002;  // Z
     bps_count = 0;
 
     RAM_init();
@@ -184,7 +202,7 @@ void lc3_init_machine(const char *path)
     label_list = NULL;
 
     if(path) {
-        (*path) ? load_object(path) : load_object(last_open_file);
+        load_object(path);
     }
 }
 
@@ -286,7 +304,7 @@ static int lc3_disassemble(lc3_uint vPC)
     unsigned char opcode, dr, sr1, sr2;
 
     vPC &= 0xFFFF;
-    lc3_uint instr = RAM_get(vPC);
+    lc3_uint instr = RAM_get(vPC) & 0xFFFF;
     opcode = BIT_RANGE(instr, 15, 12) >> 12;
 
     putchar((lc3_bps[vPC]) ? 'B' : ' ');
@@ -303,6 +321,9 @@ static int lc3_disassemble(lc3_uint vPC)
         }
         else {
             switch (instr) {
+                case 0:
+                    puts("NOP");
+                    break;
                 case 0x7:
                     puts(".FILL '\\a'");
                     break;
@@ -576,7 +597,12 @@ static int lc3_execute(void)
     }
 
     lc3_uint IR = RAM_get(PC);
-    if(! lc3_legal_ir(IR)) {
+    // is data
+    if(IR < 0x100) {
+        PC = inc(PC);
+        return 0;
+    }
+    else if(! lc3_legal_ir(IR)) {
         return 2;
     }
 
@@ -707,7 +733,7 @@ static int lc3_execute(void)
                     break;
                 case 0x25:
                     halted = true;
-                    break;
+                    return 1;
                 default:
                     break;
             }
@@ -756,18 +782,22 @@ static void cmd_step (const char *input)
 
 static void step_until_dest_level(int dest_lv)
 {
+    loop = true;
     do{
         if(try_execute() != 0)
             break;
     } while(! halted && ! stopped && dest_lv != subroutine_level);
+    loop = false;
 }
 
 static void step_until_breakpoint(void)
 {
+    loop = true;
     do{
         if(try_execute() != 0)
             break;
     } while(! halted && ! stopped && ! lc3_bps[PC]);
+    loop = false;
 }
 
 static void cmd_next (const char *input)
@@ -793,13 +823,20 @@ static void cmd_continue (const char *input)
 
 static void load_object (const char* path)
 {
+    if(! path) return;
+
+    if(! *path) {
+        path = last_open_file;
+    }
     FILE *obj_file;
     obj_file = fopen(path, "r");
     if(! obj_file) {
         printf("No such file: %s\n", path);
         return;
     }
-    strcpy(last_open_file, path);
+    if(path != last_open_file) {
+        strcpy(last_open_file, path);
+    }
     static char buf[128];
     strncpy(buf, path, 128);
     strcpy(strrchr(buf, '.'), ".sym");
@@ -852,11 +889,8 @@ static void cmd_file (const char* input)
         }
         else {
             load_object(combuf);
-            return;
         }
     }
-
-    load_object(last_open_file);
 }
 
 static void cmd_printregs(const char *input)
@@ -918,14 +952,11 @@ static lc3_uint parse_location(const char *input)
 const char* strsplit(const char *s)
 {
     if(! s) return NULL;
-    const char *p;
-    (p = strchr(s, ' ')) || ( p = strchr(s, '\t'));
-    if(! p) return NULL;
+    while(*s && !isspace(*s)) ++s;
+    while(*s && isspace(*s)) ++s;
+    if(! *s) return NULL;
 
-    while(*p && isspace(*p)) ++p;
-
-    if(! *p) return NULL;
-    return p;
+    return s;
 }
 
 static void cmd_register(const char *input)
@@ -1099,7 +1130,7 @@ static void cmd_translate (const char* input)
 static void cmd_execute (const char* input)
 {
     const char *path = strsplit(input);
-    set_script_path(path);
+    add_script(path);
 }
 
 static void cmd_quit (const char* input)

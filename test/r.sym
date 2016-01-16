@@ -1,0 +1,9 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	LOOP              3002
+//	DONE              3008
+//	DATA              3009
+//	MINUS             3016
+
