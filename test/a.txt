@@ -1,0 +1,4 @@
+printregs
+register PC x4000 
+execute b.txt
+translate pop_addr

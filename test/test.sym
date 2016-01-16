@@ -1,0 +1,13 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	zero              3016
+//	one               3017
+//	two               3018
+//	three             3019
+//	newline           301A
+//	base              301B
+//	pop_addr          301C
+//	push_addr         301D
+
