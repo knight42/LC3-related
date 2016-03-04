@@ -1,0 +1,12 @@
+// Symbol table
+// Scope level 0:
+//	Symbol Name       Page Address
+//	----------------  ------------
+//	POP               3310
+//	UnderFlow         3318
+//	PUSH              331A
+//	OverFlow          3325
+//	SAVE1             3327
+//	StackMax          3328
+//	StackBase         338C
+

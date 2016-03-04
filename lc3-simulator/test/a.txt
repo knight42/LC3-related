@@ -1,0 +1,2 @@
+printregs
+execute b.txt
