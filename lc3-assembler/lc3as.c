@@ -1,6 +1,6 @@
 #include "lc3as.h"
 
-#define diehere(format, ...) fprintf(stderr, "[line: %d] " format, __VA_ARGS__)
+#define diehere(format, ...) fprintf(stderr, "[line: %d]: " format, __VA_ARGS__)
 #define log(format, ...) fprintf(stderr, "%s: " format, __FUNCTION__, __VA_ARGS__)
 
 label_t* new_label(const char *name, int16_t loc)
@@ -204,7 +204,7 @@ int16_t get_offset(label_list_t *table, int prog_loc, int lineno, const char *s,
             return offset;
     }
     static char fmt[100];
-    sprintf(fmt, "line: %%d: Offset out of range: x%%0%dhX\n", width + 1);
+    sprintf(fmt, "[line: %%d]: Offset out of range: x%%0%dhX\n", width + 1);
 
     offset = label2loc(table, s);
     if(offset != -1) {
